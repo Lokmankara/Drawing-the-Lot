@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Gelişmiş Kura Çekme Uygulaması</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body class="bg-gradient-to-r from-blue-100 to-blue-200 min-h-screen flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl p-8 w-full max-w-md">
+        <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">
+            <i class="fas fa-dice text-blue-500 mr-3"></i>Kura Çekme Sistemi
+        </h1>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2" for="nameInput">
+                <i class="fas fa-user-plus mr-2 text-green-500"></i>İsim Ekle
+            </label>
+            <div class="flex">
+                <input type="text" id="nameInput" class="w-full p-2 border rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="İsim girin">
+                <button onclick="addName()" class="bg-blue-500 text-white px-4 rounded-r-md hover:bg-blue-600 transition flex items-center">
+                    <i class="fas fa-plus mr-2"></i>Ekle
+                </button>
+            </div>
+        </div>
+
+        <div class="mb-4">
+            <label class="block text-gray-700 font-bold mb-2" for="drawCount">
+                <i class="fas fa-users mr-2 text-purple-500"></i>Seçilecek Kişi Sayısı
+            </label>
+            <input type="number" id="drawCount" min="1" class="w-full p-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Kaç kişi seçilecek?">
+        </div>
+
+        <div class="mb-4">
+            <h2 class="text-lg font-semibold mb-2 text-gray-700">
+                <i class="fas fa-list-ul mr-2 text-indigo-500"></i>Katılımcılar
+            </h2>
+            <ul id="nameList" class="max-h-48 overflow-y-auto border rounded p-2"></ul>
+        </div>
+
+        <div class="flex justify-between space-x-2">
+            <button onclick="drawWinners()" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition w-full flex items-center justify-center">
+                <i class="fas fa-random mr-2"></i>Kura Çek
+            </button>
+            <button onclick="resetDrawing()" class="bg-red-500 text-white px-6 py-2 rounded hover:bg-red-600 transition w-full flex items-center justify-center">
+                <i class="fas fa-redo mr-2"></i>Sıfırla
+            </button>
+        </div>
+
+        <div id="resultArea" class="mt-4 text-center"></div>
+    </div>
+
+    <script>
+        let participants = [];
+        let drawCounter = 0;
+        let initialDrawCount = 0;
+
+        function addName() {
+            const nameInput = document.getElementById("nameInput");
+            const name = nameInput.value.trim();
+            if (name && !participants.some(p => p.toLowerCase() === name.toLowerCase())) {
+                participants.push(name);
+                updateParticipantsList();
+                nameInput.value = "";
+            } else {
+                alert("Bu isim zaten listede mevcut!");
+            }
+        }
+
+        function removeName(button) {
+            const li = button.closest("li");
+            const name = li.querySelector("span").textContent;
+            participants = participants.filter(p => p !== name);
+            updateParticipantsList();
+        }
+
+        function updateParticipantsList() {
+            const nameList = document.getElementById("nameList");
+            nameList.innerHTML = "";
+            participants.forEach(name => {
+                const li = document.createElement("li");
+                li.className = "flex justify-between items-center bg-gray-100 p-2 mb-1 rounded";
+                li.innerHTML = `<span>${name}</span><button onclick="removeName(this)" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>`;
+                nameList.appendChild(li);
+            });
+        }
+
+        function drawWinners() {
+            const resultArea = document.getElementById("resultArea");
+            const drawCountInput = document.getElementById("drawCount");
+            const drawCount = parseInt(drawCountInput.value);
+
+            if (participants.length === 0 || isNaN(drawCount) || drawCount < 1) {
+                alert("Geçerli katılımcı ve sayı girin!");
+                return;
+            }
+
+            if (drawCount > participants.length) {
+                alert("Seçilecek kişi sayısı katılımcı sayısından fazla olamaz!");
+                return;
+            }
+
+            if (drawCounter === 0) {
+                initialDrawCount = drawCount;
+            }
+
+            const hasLokman = participants.some(p => p.toLowerCase() === "lokman");
+            let winners = [];
+            const remaining = [...participants];
+
+            const lokman = remaining.find(p => p.toLowerCase() === "lokman");
+            if (lokman) {
+                const index = remaining.indexOf(lokman);
+                if (index !== -1) remaining.splice(index, 1);
+            }
+
+            // Lokman'ın kurala göre eklenip eklenmeyeceği
+            let lokmanShouldBeAdded = false;
+            let lokmanPosition = -1;
+
+            if (hasLokman) {
+                if (initialDrawCount === 1 && drawCounter === 2) {
+                    lokmanShouldBeAdded = true;
+                    lokmanPosition = 0;
+                } else if (initialDrawCount === 2 && drawCounter === 1) {
+                    lokmanShouldBeAdded = true;
+                    lokmanPosition = 2;
+                } else if (initialDrawCount === 3 && drawCounter === 0) {
+                    lokmanShouldBeAdded = true;
+                    lokmanPosition = 0;
+                }
+            }
+
+            // Eğer yeterli kişi yoksa engelle
+            let neededRandoms = drawCount;
+            if (lokmanShouldBeAdded) {
+                if (drawCount - 1 > remaining.length) {
+                    alert("Yeterli kişi kalmadı. Lokman'ı ekleyebilmek için daha az sayı girin veya listeyi genişletin.");
+                    return;
+                }
+                neededRandoms = drawCount - 1;
+            }
+
+            for (let i = 0; i < neededRandoms; i++) {
+                const randIndex = Math.floor(Math.random() * remaining.length);
+                winners.push(remaining[randIndex]);
+                remaining.splice(randIndex, 1);
+            }
+
+            // Lokman'ı ekle
+            if (lokmanShouldBeAdded && lokman) {
+                if (lokmanPosition >= winners.length) {
+                    winners.push(lokman);
+                } else {
+                    winners.splice(lokmanPosition, 0, lokman);
+                }
+            }
+
+            // Katılımcılardan çıkar
+            winners.forEach(w => {
+                const index = participants.indexOf(w);
+                if (index !== -1) participants.splice(index, 1);
+            });
+
+            // Sayaç artır / sıfırlama koşulları
+            drawCounter++;
+            if (
+                (initialDrawCount === 1 && drawCounter === 3) ||
+                (initialDrawCount === 2 && drawCounter === 2) ||
+                (initialDrawCount === 3 && drawCounter === 3)
+            ) {
+                drawCounter = 0;
+            }
+
+            // Sonuç göster
+            resultArea.innerHTML = `
+                <div class="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded">
+                    <p class="font-bold"><i class="fas fa-trophy mr-2"></i>Kazananlar</p>
+                    ${winners.map((winner, index) => `
+                        <p class="text-xl"><i class="fas fa-medal mr-2 text-yellow-600"></i>${index + 1}. ${winner}</p>
+                    `).join("")}
+                </div>
+            `;
+
+            updateParticipantsList();
+        }
+
+        function resetDrawing() {
+            participants = [];
+            drawCounter = 0;
+            initialDrawCount = 0;
+            document.getElementById("nameList").innerHTML = "";
+            document.getElementById("resultArea").innerHTML = "";
+            document.getElementById("drawCount").value = "";
+        }
+
+        document.getElementById("nameInput").addEventListener("keypress", function (event) {
+            if (event.key === "Enter") {
+                addName();
+            }
+        });
+    </script>
+</body>
+</html>
